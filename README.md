@@ -27,7 +27,7 @@ git fetch template && git checkout template/master .github
 [x] Конфиги и флаги запуска
 [x] файловая структура
 [x] Makefile
-[ ] Добавить коннект с базой и миграции, расписать таблицы
+[x] Добавить коннект с базой и миграции
 
 [ ]
 * `POST /api/user/register` — регистрация пользователя;
