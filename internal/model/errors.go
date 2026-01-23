@@ -17,6 +17,9 @@ const (
 )
 
 var (
+	ErrInvalidLoginOrPassword = errors.New(ErrInvalidLoginOrPasswordMessage)
+
 	ErrOrderHasBeenLoadedCurrentUser = errors.New("order has been loaded current user")
 	ErrOrderHasBeenLoadedSomeUser    = errors.New("order has been loaded some user")
+	ErrInsufficientFunds             = errors.New("insufficient funds")
 )

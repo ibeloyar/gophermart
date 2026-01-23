@@ -2,6 +2,11 @@ package model
 
 import "time"
 
+type TokenInfo struct {
+	ID    int64  `json:"id"`
+	Login string `json:"login"`
+}
+
 type User struct {
 	ID        int64     `json:"id"`
 	Login     string    `json:"login"`

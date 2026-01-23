@@ -43,7 +43,7 @@ func validateRegisterDTO(input model.RegisterDTO) error {
 
 func validateLogin(login string) error {
 	if len(login) < minLoginLen || len(login) > maxLoginLen {
-		return errors.New(model.ErrInvalidLoginOrPasswordMessage)
+		return model.ErrInvalidLoginOrPassword
 	}
 
 	return nil
@@ -51,7 +51,7 @@ func validateLogin(login string) error {
 
 func validatePassword(password string) error {
 	if len(password) < minPassLen || len(password) > maxPassLen {
-		return errors.New(model.ErrInvalidLoginOrPasswordMessage)
+		return model.ErrInvalidLoginOrPassword
 	}
 
 	return nil

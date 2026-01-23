@@ -6,17 +6,23 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrPasswordRequired = errors.New("password is required")
+	ErrPasswordMaxLen64 = errors.New("password too long, max 64 characters")
+	ErrPasswordGenerate = errors.New("password generate error")
+)
+
 func HashPassword(password string, passCost int) (string, error) {
 	if len(password) < 1 {
-		return "", errors.New("password is required")
+		return "", ErrPasswordRequired
 	}
 	if len(password) > 64 {
-		return "", errors.New("password too long, max 64 characters")
+		return "", ErrPasswordMaxLen64
 	}
 
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), passCost)
 	if err != nil {
-		return "", errors.New("password generate error")
+		return "", ErrPasswordGenerate
 	}
 
 	return string(bytes), err

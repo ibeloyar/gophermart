@@ -72,10 +72,12 @@ func New(databaseURI, accrualAddress string) (*Repository, error) {
 
 func (r *Repository) GetUserByLogin(login string) *model.User {
 	var user model.User
-	query := `SELECT * FROM users WHERE login = $1`
 
 	err := r.executeWithRetryConnection(func(db *sql.DB) error {
+		query := `SELECT * FROM users WHERE login = $1`
+
 		row := db.QueryRow(query, login)
+
 		return row.Scan(&user.ID, &user.Login, &user.Password, &user.CreatedAt)
 	})
 
@@ -96,7 +98,7 @@ func (r *Repository) CreateUser(user model.User) (int64, error) {
 		query := `INSERT INTO users (login, password) VALUES ($1, $2) RETURNING id`
 
 		row := db.QueryRow(query, user.Login, user.Password)
-		
+
 		return row.Scan(&userID)
 	})
 
@@ -105,11 +107,10 @@ func (r *Repository) CreateUser(user model.User) (int64, error) {
 
 func (r *Repository) CreateOrder(userID int64, number string) error {
 	return r.executeWithRetryConnection(func(db *sql.DB) error {
-		queryOrder := `SELECT user_id, number FROM orders WHERE number = $1`
+		querySelectOrder := `SELECT user_id, number FROM orders WHERE number = $1`
 
 		var order model.Order
-		row := db.QueryRow(queryOrder, number)
-		err := row.Scan(&order.UserID, &order.Number)
+		_ = db.QueryRow(querySelectOrder, number).Scan(&order.UserID, &order.Number)
 
 		if order.UserID != 0 && order.Number != "" {
 			if order.UserID == userID {
@@ -120,9 +121,9 @@ func (r *Repository) CreateOrder(userID int64, number string) error {
 			}
 		}
 
-		query := `INSERT INTO orders (user_id, number) VALUES ($1, $2)`
+		queryInsertOrder := `INSERT INTO orders (user_id, number) VALUES ($1, $2)`
 
-		_, err = db.Exec(query, userID, number)
+		_, err := db.Exec(queryInsertOrder, userID, number)
 
 		return err
 	})
@@ -133,8 +134,7 @@ func (r *Repository) GetOrdersByUserID(userID int64) ([]model.Order, error) {
 
 	err := r.executeWithRetryConnection(func(db *sql.DB) error {
 		query := `SELECT number, status, accrual, uploaded_at 
-		FROM orders WHERE user_id = $1 
-        ORDER BY uploaded_at DESC`
+			FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
 
 		rows, err := db.Query(query, userID)
 		if err != nil {
@@ -163,18 +163,18 @@ func (r *Repository) GetOrdersByUserID(userID int64) ([]model.Order, error) {
 
 func (r *Repository) GetBalanceByUserID(userID int64) (*model.Balance, error) {
 	var balance model.Balance
-	query := `SELECT COALESCE(SUM(amount), 0) AS current, 
-		COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS withdrawn
-		FROM balance WHERE user_id = $1`
 
-	if err := r.executeWithRetryConnection(func(db *sql.DB) error {
+	err := r.executeWithRetryConnection(func(db *sql.DB) error {
+		query := `SELECT COALESCE(SUM(amount), 0) AS current, 
+			COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS withdrawn
+			FROM balance WHERE user_id = $1`
+
 		row := db.QueryRow(query, userID)
-		return row.Scan(&balance.Current, &balance.Withdrawn)
-	}); err != nil {
-		return nil, err
-	}
 
-	return &balance, nil
+		return row.Scan(&balance.Current, &balance.Withdrawn)
+	})
+
+	return &balance, err
 }
 
 func (r *Repository) SetWithdraw(userID int64, input model.SetWithdrawDTO) error {
@@ -186,41 +186,32 @@ func (r *Repository) SetWithdraw(userID int64, input model.SetWithdrawDTO) error
 			return err
 		}
 
-		// 1. Сначала блокируем строки баланса
-		_, err = tx.ExecContext(ctx, `
-		SELECT id FROM balance
-		WHERE user_id = $1
-		FOR UPDATE
-	`, userID)
+		// блокируем строки баланса
+		_, err = tx.ExecContext(ctx, `SELECT id FROM balance WHERE user_id = $1 FOR UPDATE`, userID)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
 
-		// 2. Проверяем текущий баланс
+		// текущий баланс
 		var current float64
-		err = tx.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(amount), 0) AS current
-		FROM balance
-		WHERE user_id = $1
-	`, userID).Scan(&current)
+		querySelectCurrentBalance := `SELECT COALESCE(SUM(amount), 0) AS current FROM balance WHERE user_id = $1`
+		err = tx.QueryRowContext(ctx, querySelectCurrentBalance, userID).Scan(&current)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
 
-		// 3. Проверка остатка
+		// проверка остатка
 		absAmount := math.Abs(input.Sum)
 		if current < absAmount {
 			_ = tx.Rollback()
-			return errors.New("insufficient funds")
+			return model.ErrInsufficientFunds
 		}
 
-		// 4. Вставляем новую запись и возвращаем данные
-		_, err = tx.ExecContext(ctx, `
-		INSERT INTO balance (user_id, order_number, amount)
-		VALUES ($1, $2, $3)
-	`, userID, input.Order, -absAmount)
+		// вставляем новую запись
+		queryInsertBalance := `INSERT INTO balance (user_id, order_number, amount) VALUES ($1, $2, $3)`
+		_, err = tx.ExecContext(ctx, queryInsertBalance, userID, input.Order, -absAmount)
 
 		if err != nil {
 			_ = tx.Rollback()
@@ -250,6 +241,7 @@ func (r *Repository) GetWithdrawsByUserID(userID int64) ([]model.Withdraw, error
 
 		for rows.Next() {
 			var withdraw model.Withdraw
+
 			if err := rows.Scan(&withdraw.ID, &withdraw.UserID, &withdraw.OrderNumber, &withdraw.Amount, &withdraw.UploadedAt); err != nil {
 				return err
 			}
@@ -260,11 +252,7 @@ func (r *Repository) GetWithdrawsByUserID(userID int64) ([]model.Withdraw, error
 		return rows.Err()
 	})
 
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+	return result, err
 }
 
 func (r *Repository) Shutdown() error {
