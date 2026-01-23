@@ -6,17 +6,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Repository struct {
-	passCost int
-}
-
-func New(passCost int) *Repository {
-	return &Repository{
-		passCost: passCost,
-	}
-}
-
-func (r *Repository) HashPassword(password string) (string, error) {
+func HashPassword(password string, passCost int) (string, error) {
 	if len(password) < 1 {
 		return "", errors.New("password is required")
 	}
@@ -24,7 +14,7 @@ func (r *Repository) HashPassword(password string) (string, error) {
 		return "", errors.New("password too long, max 64 characters")
 	}
 
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), r.passCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), passCost)
 	if err != nil {
 		return "", errors.New("password generate error")
 	}
@@ -32,7 +22,7 @@ func (r *Repository) HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-func (r *Repository) CheckPasswordHash(password, hash string) bool {
+func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }

@@ -76,10 +76,6 @@ install-tools:
 mock:
 	@echo "Generating mock for pg.StorageRepo..."
 	mockgen -destination=internal/repository/pg/mocks/pg_mock.go -package=pg -source=internal/service/service.go StorageRepo
-	@echo "Generating mock for service.PasswordRepo..."
-	mockgen -destination=internal/repository/password/mocks/password_mock.go -package=password -source=internal/service/service.go PasswordRepo
-	@echo "Generating mock for service.TokensRepo..."
-	mockgen -destination=internal/repository/tokens/mocks/tokens_mock.go -package=tokens -source=internal/service/service.go TokensRepo
 
 .PHONY: run_accrual_linux
 run_accrual_linux:

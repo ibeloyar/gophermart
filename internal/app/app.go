@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ibeloyar/gophermart/internal/config"
-	"github.com/ibeloyar/gophermart/internal/repository/password"
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
 	"github.com/ibeloyar/gophermart/internal/service"
 	"github.com/ibeloyar/gophermart/pgk/logger"
@@ -32,10 +31,8 @@ func Run(cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	passwordRepo := password.New(cfg.PassCost)
-	//tokenRepo := tokens.New(cfg.SecretKey, cfg.TokenLifetimeHours)
 
-	mainService := service.New(storageRepo, passwordRepo, time.Duration(cfg.TokenLifetimeHours)*time.Hour, cfg.SecretKey)
+	mainService := service.New(storageRepo, cfg.PassCost, time.Duration(cfg.TokenLifetimeHours)*time.Hour, cfg.SecretKey)
 
 	router := chi.NewRouter()
 	//router.Use(gzip.Middleware)

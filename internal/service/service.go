@@ -9,6 +9,7 @@ import (
 	"github.com/ibeloyar/gophermart/internal/model"
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
 	"github.com/ibeloyar/gophermart/pgk/auth"
+	"github.com/ibeloyar/gophermart/pgk/password"
 )
 
 type StorageRepo interface {
@@ -21,37 +22,20 @@ type StorageRepo interface {
 	GetWithdrawsByUserID(userID int64) ([]model.Withdraw, error)
 }
 
-type PasswordRepo interface {
-	HashPassword(password string) (string, error)
-	CheckPasswordHash(password, hash string) bool
-}
-
-//type TokensRepo interface {
-//	GenerateToken(input model.TokenInfo) (token string, err error)
-//	VerifyJWTToken(tokenString string) (*model.TokenInfo, error)
-//}
-
-type AccrualRepo interface {
-	GetAccrual(orderNumber string) (*model.Accrual, error)
-}
-
 type Service struct {
-	storage  StorageRepo
-	password PasswordRepo
-	//tokens   TokensRepo
-
-	tokenSecret string
-	tokenExp    time.Duration
+	storage      StorageRepo
+	passwordCost int
+	tokenSecret  string
+	tokenExp     time.Duration
 }
 
-func New(s StorageRepo, p PasswordRepo, tokenExp time.Duration, tokenSecret string) *Service {
+func New(s StorageRepo, passwordCost int, tokenExp time.Duration, tokenSecret string) *Service {
 	return &Service{
-		storage:  s,
-		password: p,
-		//tokens:   t,
+		storage: s,
 
-		tokenExp:    tokenExp,
-		tokenSecret: tokenSecret,
+		passwordCost: passwordCost,
+		tokenExp:     tokenExp,
+		tokenSecret:  tokenSecret,
 	}
 }
 
@@ -71,7 +55,7 @@ func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
 		}
 	}
 
-	if !s.password.CheckPasswordHash(input.Password, user.Password) {
+	if !password.CheckPasswordHash(input.Password, user.Password) {
 		return "", &model.APIError{
 			Code:    http.StatusUnauthorized,
 			Message: model.ErrInvalidLoginOrPasswordMessage,
@@ -93,7 +77,7 @@ func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
 }
 
 func (s *Service) Register(input model.RegisterDTO) (string, *model.APIError) {
-	passwordHash, err := s.password.HashPassword(input.Password)
+	passwordHash, err := password.HashPassword(input.Password, s.passwordCost)
 	if err != nil {
 		return "", &model.APIError{
 			Code:    http.StatusInternalServerError,
