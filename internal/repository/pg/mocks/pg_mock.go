@@ -6,7 +6,6 @@ package pg
 
 import (
 	reflect "reflect"
-	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/ibeloyar/gophermart/internal/model"
@@ -16,11 +15,6 @@ import (
 type MockStorageRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockStorageRepoMockRecorder
-}
-
-func (m *MockStorageRepo) CreateOrder(userID int64, number string) error {
-	//TODO implement me
-	panic("implement me")
 }
 
 // MockStorageRepoMockRecorder is the mock recorder for MockStorageRepo.
@@ -40,6 +34,20 @@ func (m *MockStorageRepo) EXPECT() *MockStorageRepoMockRecorder {
 	return m.recorder
 }
 
+// CreateOrder mocks base method.
+func (m *MockStorageRepo) CreateOrder(userID int64, number string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrder", userID, number)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateOrder indicates an expected call of CreateOrder.
+func (mr *MockStorageRepoMockRecorder) CreateOrder(userID, number interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrder", reflect.TypeOf((*MockStorageRepo)(nil).CreateOrder), userID, number)
+}
+
 // CreateUser mocks base method.
 func (m *MockStorageRepo) CreateUser(user model.User) error {
 	m.ctrl.T.Helper()
@@ -52,6 +60,36 @@ func (m *MockStorageRepo) CreateUser(user model.User) error {
 func (mr *MockStorageRepoMockRecorder) CreateUser(user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockStorageRepo)(nil).CreateUser), user)
+}
+
+// GetBalanceByUserID mocks base method.
+func (m *MockStorageRepo) GetBalanceByUserID(userID int64) (*model.Balance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBalanceByUserID", userID)
+	ret0, _ := ret[0].(*model.Balance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBalanceByUserID indicates an expected call of GetBalanceByUserID.
+func (mr *MockStorageRepoMockRecorder) GetBalanceByUserID(userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalanceByUserID", reflect.TypeOf((*MockStorageRepo)(nil).GetBalanceByUserID), userID)
+}
+
+// GetOrdersByUserID mocks base method.
+func (m *MockStorageRepo) GetOrdersByUserID(userID int64) ([]model.Order, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrdersByUserID", userID)
+	ret0, _ := ret[0].([]model.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrdersByUserID indicates an expected call of GetOrdersByUserID.
+func (mr *MockStorageRepoMockRecorder) GetOrdersByUserID(userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrdersByUserID", reflect.TypeOf((*MockStorageRepo)(nil).GetOrdersByUserID), userID)
 }
 
 // GetUserByLogin mocks base method.
@@ -68,122 +106,31 @@ func (mr *MockStorageRepoMockRecorder) GetUserByLogin(login interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByLogin", reflect.TypeOf((*MockStorageRepo)(nil).GetUserByLogin), login)
 }
 
-// Ping mocks base method.
-func (m *MockStorageRepo) Ping() error {
+// GetWithdrawsByUserID mocks base method.
+func (m *MockStorageRepo) GetWithdrawsByUserID(userID int64) ([]model.Withdraw, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping")
+	ret := m.ctrl.Call(m, "GetWithdrawsByUserID", userID)
+	ret0, _ := ret[0].([]model.Withdraw)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWithdrawsByUserID indicates an expected call of GetWithdrawsByUserID.
+func (mr *MockStorageRepoMockRecorder) GetWithdrawsByUserID(userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithdrawsByUserID", reflect.TypeOf((*MockStorageRepo)(nil).GetWithdrawsByUserID), userID)
+}
+
+// SetWithdraw mocks base method.
+func (m *MockStorageRepo) SetWithdraw(userID int64, input model.SetWithdrawDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetWithdraw", userID, input)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Ping indicates an expected call of Ping.
-func (mr *MockStorageRepoMockRecorder) Ping() *gomock.Call {
+// SetWithdraw indicates an expected call of SetWithdraw.
+func (mr *MockStorageRepoMockRecorder) SetWithdraw(userID, input interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockStorageRepo)(nil).Ping))
-}
-
-// MockPasswordRepo is a mock of PasswordRepo interface.
-type MockPasswordRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockPasswordRepoMockRecorder
-}
-
-// MockPasswordRepoMockRecorder is the mock recorder for MockPasswordRepo.
-type MockPasswordRepoMockRecorder struct {
-	mock *MockPasswordRepo
-}
-
-// NewMockPasswordRepo creates a new mock instance.
-func NewMockPasswordRepo(ctrl *gomock.Controller) *MockPasswordRepo {
-	mock := &MockPasswordRepo{ctrl: ctrl}
-	mock.recorder = &MockPasswordRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPasswordRepo) EXPECT() *MockPasswordRepoMockRecorder {
-	return m.recorder
-}
-
-// CheckPasswordHash mocks base method.
-func (m *MockPasswordRepo) CheckPasswordHash(password, hash string) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckPasswordHash", password, hash)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// CheckPasswordHash indicates an expected call of CheckPasswordHash.
-func (mr *MockPasswordRepoMockRecorder) CheckPasswordHash(password, hash interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckPasswordHash", reflect.TypeOf((*MockPasswordRepo)(nil).CheckPasswordHash), password, hash)
-}
-
-// HashPassword mocks base method.
-func (m *MockPasswordRepo) HashPassword(password string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HashPassword", password)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// HashPassword indicates an expected call of HashPassword.
-func (mr *MockPasswordRepoMockRecorder) HashPassword(password interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HashPassword", reflect.TypeOf((*MockPasswordRepo)(nil).HashPassword), password)
-}
-
-// MockTokensRepo is a mock of TokensRepo interface.
-type MockTokensRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockTokensRepoMockRecorder
-}
-
-// MockTokensRepoMockRecorder is the mock recorder for MockTokensRepo.
-type MockTokensRepoMockRecorder struct {
-	mock *MockTokensRepo
-}
-
-// NewMockTokensRepo creates a new mock instance.
-func NewMockTokensRepo(ctrl *gomock.Controller) *MockTokensRepo {
-	mock := &MockTokensRepo{ctrl: ctrl}
-	mock.recorder = &MockTokensRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTokensRepo) EXPECT() *MockTokensRepoMockRecorder {
-	return m.recorder
-}
-
-// GenerateToken mocks base method.
-func (m *MockTokensRepo) GenerateToken(input model.TokenInfo, exp time.Duration) (string, string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateToken", input, exp)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(string)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GenerateToken indicates an expected call of GenerateToken.
-func (mr *MockTokensRepoMockRecorder) GenerateToken(input, exp interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateToken", reflect.TypeOf((*MockTokensRepo)(nil).GenerateToken), input, exp)
-}
-
-// VerifyJWTToken mocks base method.
-func (m *MockTokensRepo) VerifyJWTToken(tokenString string) (*model.TokenInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyJWTToken", tokenString)
-	ret0, _ := ret[0].(*model.TokenInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// VerifyJWTToken indicates an expected call of VerifyJWTToken.
-func (mr *MockTokensRepoMockRecorder) VerifyJWTToken(tokenString interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyJWTToken", reflect.TypeOf((*MockTokensRepo)(nil).VerifyJWTToken), tokenString)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWithdraw", reflect.TypeOf((*MockStorageRepo)(nil).SetWithdraw), userID, input)
 }

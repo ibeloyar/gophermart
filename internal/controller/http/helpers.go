@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// readBody читает и парсит JSON и Text/Plain тело запроса в структуру T
+// readBody - читает и парсит JSON и Text/Plain тело запроса в структуру T
 func readBody[T any](r *http.Request) (T, error) {
 	var body T
 
@@ -40,4 +40,18 @@ func readBody[T any](r *http.Request) (T, error) {
 	}
 
 	return body, nil
+}
+
+// writeJSON - записывает ответ в формате JSON и добавляет заголовок Content-Type: application/json
+func writeJSON(w http.ResponseWriter, data interface{}, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	response, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(response)
 }

@@ -13,8 +13,8 @@ import (
 )
 
 type StorageRepo interface {
+	CreateUser(user model.User) (int64, error)
 	GetUserByLogin(login string) *model.User
-	CreateUser(user model.User) error
 	CreateOrder(userID int64, number string) error
 	GetOrdersByUserID(userID int64) ([]model.Order, error)
 	GetBalanceByUserID(userID int64) (*model.Balance, error)
@@ -29,21 +29,67 @@ type Service struct {
 	tokenExp     time.Duration
 }
 
-func New(s StorageRepo, passwordCost int, tokenExp time.Duration, tokenSecret string) *Service {
+func New(storage StorageRepo, passwordCost int, tokenExp time.Duration, tokenSecret string) *Service {
 	return &Service{
-		storage: s,
-
+		storage:      storage,
 		passwordCost: passwordCost,
 		tokenExp:     tokenExp,
 		tokenSecret:  tokenSecret,
 	}
 }
 
-func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
-	if err := loginDTOValidate(input); err != nil {
+func (s *Service) Register(input model.RegisterDTO) (string, *model.APIError) {
+	if err := validateRegisterDTO(input); err != nil {
 		return "", &model.APIError{
 			Code:    http.StatusBadRequest,
-			Message: err.Error(),
+			Message: model.ErrInvalidLoginOrPasswordMessage,
+		}
+	}
+
+	passwordHash, err := password.HashPassword(input.Password, s.passwordCost)
+	if err != nil {
+		return "", &model.APIError{
+			Code:    http.StatusInternalServerError,
+			Message: model.ErrInternalServerMessage,
+		}
+	}
+
+	userID, err := s.storage.CreateUser(model.User{
+		Login:    input.Login,
+		Password: passwordHash,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), pg.ErrIsExistCode) {
+			return "", &model.APIError{
+				Code:    http.StatusConflict,
+				Message: model.ErrUserAlreadyExistMessage,
+			}
+		}
+		return "", &model.APIError{
+			Code:    http.StatusInternalServerError,
+			Message: model.ErrInternalServerMessage,
+		}
+	}
+
+	token, err := auth.GenerateBearerToken(model.TokenInfo{
+		ID:    userID,
+		Login: input.Login,
+	}, s.tokenExp, s.tokenSecret)
+	if err != nil {
+		return "", &model.APIError{
+			Code:    http.StatusInternalServerError,
+			Message: model.ErrInternalServerMessage,
+		}
+	}
+
+	return token, nil
+}
+
+func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
+	if err := validateLoginDTO(input); err != nil {
+		return "", &model.APIError{
+			Code:    http.StatusBadRequest,
+			Message: model.ErrInvalidLoginOrPasswordMessage,
 		}
 	}
 
@@ -59,53 +105,6 @@ func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
 		return "", &model.APIError{
 			Code:    http.StatusUnauthorized,
 			Message: model.ErrInvalidLoginOrPasswordMessage,
-		}
-	}
-
-	token, err := auth.GenerateBearerToken(model.TokenInfo{
-		ID:    user.ID,
-		Login: user.Login,
-	}, s.tokenExp, s.tokenSecret)
-	if err != nil {
-		return "", &model.APIError{
-			Code:    http.StatusInternalServerError,
-			Message: model.ErrInternalServerMessage,
-		}
-	}
-
-	return token, nil
-}
-
-func (s *Service) Register(input model.RegisterDTO) (string, *model.APIError) {
-	passwordHash, err := password.HashPassword(input.Password, s.passwordCost)
-	if err != nil {
-		return "", &model.APIError{
-			Code:    http.StatusInternalServerError,
-			Message: model.ErrInternalServerMessage,
-		}
-	}
-
-	if err := s.storage.CreateUser(model.User{
-		Login:    input.Login,
-		Password: passwordHash,
-	}); err != nil {
-		if strings.Contains(err.Error(), pg.ErrIsExistCode) {
-			return "", &model.APIError{
-				Code:    http.StatusConflict,
-				Message: "user already exists",
-			}
-		}
-		return "", &model.APIError{
-			Code:    http.StatusInternalServerError,
-			Message: model.ErrInternalServerMessage,
-		}
-	}
-
-	user := s.storage.GetUserByLogin(input.Login)
-	if user == nil {
-		return "", &model.APIError{
-			Code:    http.StatusInternalServerError,
-			Message: model.ErrInternalServerMessage,
 		}
 	}
 
@@ -165,7 +164,7 @@ func (s *Service) GetOrders(userID int64) ([]model.Order, *model.APIError) {
 	if len(orders) == 0 {
 		return nil, &model.APIError{
 			Code:    http.StatusNoContent,
-			Message: "no orders found",
+			Message: model.ErrOrdersNotFoundMessage,
 		}
 	}
 

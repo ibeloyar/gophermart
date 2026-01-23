@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/ibeloyar/gophermart/internal/model"
@@ -10,8 +9,8 @@ import (
 )
 
 type Service interface {
-	Login(input model.LoginDTO) (string, *model.APIError)
 	Register(input model.RegisterDTO) (string, *model.APIError)
+	Login(input model.LoginDTO) (string, *model.APIError)
 
 	CreateOrder(userID int64, orderNumber string) *model.APIError
 	GetOrders(userID int64) ([]model.Order, *model.APIError)
@@ -78,6 +77,7 @@ func (c *Controller) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 	apiErr := c.service.CreateOrder(auth.GetTokenInfo[model.TokenInfo](r).ID, orderNumber)
 	if apiErr != nil {
+		// Если order уже был добавлен текущим пользователем
 		if apiErr.Code == http.StatusOK {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -97,15 +97,7 @@ func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := json.Marshal(orders)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	writeJSON(w, orders, http.StatusOK)
 }
 
 func (c *Controller) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -115,15 +107,7 @@ func (c *Controller) GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := json.Marshal(balance)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	writeJSON(w, balance, http.StatusOK)
 }
 
 func (c *Controller) SetWithdrawal(w http.ResponseWriter, r *http.Request) {
@@ -150,13 +134,10 @@ func (c *Controller) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := json.Marshal(withdrawals)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	if len(withdrawals) == 0 {
+		writeJSON(w, withdrawals, http.StatusNoContent)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	writeJSON(w, withdrawals, http.StatusOK)
 }

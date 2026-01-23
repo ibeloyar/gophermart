@@ -10,6 +10,10 @@ type APIError struct {
 const (
 	ErrInternalServerMessage         = "internal server error"
 	ErrInvalidLoginOrPasswordMessage = "invalid login or password"
+	ErrUserAlreadyExistMessage       = "user already exists"
+	ErrOrdersNotFoundMessage         = "no orders found"
+	ErrOrderNumberRequiredMessage    = "invalid order is required"
+	ErrOrderInvalidNumberMessage     = "invalid order number"
 )
 
 var (

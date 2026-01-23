@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 )
@@ -12,16 +13,16 @@ const (
 	DefaultAccrualSystemAddress = "http://localhost:4000"
 	DefaultPassCost             = 3
 	DefaultSecretKey            = "secret"
-	DefaultTokenLifetimeHours   = 3
+	DefaultTokenLifetime        = 3 * time.Hour
 )
 
 type Config struct {
-	RunAddress           string `env:"RUN_ADDRESS"`
-	DatabaseURI          string `env:"DATABASE_URI"`
-	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
-	PassCost             int    `env:"PASS_COST"`
-	SecretKey            string `env:"SECRET_KEY"`
-	TokenLifetimeHours   int    `env:"TOKEN_LIFETIME_HOURS"`
+	RunAddress           string        `env:"RUN_ADDRESS"`
+	DatabaseURI          string        `env:"DATABASE_URI"`
+	AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	PassCost             int           `env:"PASS_COST"`
+	SecretKey            string        `env:"SECRET_KEY"`
+	TokenLifetime        time.Duration `env:"TOKEN_LIFETIME" default:"3h"`
 }
 
 func Read() (Config, error) {
@@ -33,7 +34,7 @@ func Read() (Config, error) {
 
 	flag.IntVar(&config.PassCost, "p", DefaultPassCost, "Pass cost for password hash")
 	flag.StringVar(&config.SecretKey, "s", DefaultSecretKey, "Secret key for token")
-	flag.IntVar(&config.TokenLifetimeHours, "h", DefaultTokenLifetimeHours, "Token lifetime in hours")
+	flag.DurationVar(&config.TokenLifetime, "h", DefaultTokenLifetime, "Token lifetime (e.g. 1h, 30m, 2h30m)")
 
 	flag.Parse()
 

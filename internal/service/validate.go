@@ -17,7 +17,19 @@ const (
 	asciiTen  = 57
 )
 
-func loginDTOValidate(input model.LoginDTO) error {
+func validateLoginDTO(input model.LoginDTO) error {
+	if err := validateLogin(input.Password); err != nil {
+		return err
+	}
+
+	if err := validatePassword(input.Password); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateRegisterDTO(input model.RegisterDTO) error {
 	if err := validateLogin(input.Password); err != nil {
 		return err
 	}
@@ -49,7 +61,7 @@ func validateOrderNumber(number string) *model.APIError {
 	if number == "" {
 		return &model.APIError{
 			Code:    http.StatusBadRequest,
-			Message: "order number is empty",
+			Message: model.ErrOrderNumberRequiredMessage,
 		}
 	}
 
@@ -58,7 +70,7 @@ func validateOrderNumber(number string) *model.APIError {
 	if err != nil {
 		return &model.APIError{
 			Code:    http.StatusUnprocessableEntity,
-			Message: "invalid order number",
+			Message: model.ErrOrderInvalidNumberMessage,
 		}
 	}
 
@@ -66,7 +78,7 @@ func validateOrderNumber(number string) *model.APIError {
 	if sum%10 != 0 {
 		return &model.APIError{
 			Code:    http.StatusUnprocessableEntity,
-			Message: "invalid order number",
+			Message: model.ErrOrderInvalidNumberMessage,
 		}
 	}
 

@@ -32,18 +32,16 @@ func Run(cfg config.Config) error {
 		return err
 	}
 
-	mainService := service.New(storageRepo, cfg.PassCost, time.Duration(cfg.TokenLifetimeHours)*time.Hour, cfg.SecretKey)
+	mainService := service.New(storageRepo, cfg.PassCost, cfg.TokenLifetime, cfg.SecretKey)
 
 	router := chi.NewRouter()
-	//router.Use(gzip.Middleware)
 	router.Use(logger.LoggingMiddleware(lg))
 	router.Use(middleware.Recoverer)
 	handlers := httpController.New(mainService, lg)
-	router = httpController.InitRoutes(router, handlers, cfg.SecretKey)
 
 	srv := &http.Server{
 		Addr:    cfg.RunAddress,
-		Handler: router,
+		Handler: httpController.InitRoutes(router, handlers, cfg.SecretKey),
 	}
 
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

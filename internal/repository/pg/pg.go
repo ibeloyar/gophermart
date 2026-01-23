@@ -83,20 +83,24 @@ func (r *Repository) GetUserByLogin(login string) *model.User {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
-		return nil // Другие ошибки (включая исчерпанные retry)
+		return nil
 	}
 
 	return &user
 }
 
-func (r *Repository) CreateUser(user model.User) error {
-	return r.executeWithRetryConnection(func(db *sql.DB) error {
-		query := `INSERT INTO users (login, password) VALUES ($1, $2)`
+func (r *Repository) CreateUser(user model.User) (int64, error) {
+	var userID int64
 
-		_, err := db.Exec(query, user.Login, user.Password)
+	err := r.executeWithRetryConnection(func(db *sql.DB) error {
+		query := `INSERT INTO users (login, password) VALUES ($1, $2) RETURNING id`
 
-		return err
+		row := db.QueryRow(query, user.Login, user.Password)
+		
+		return row.Scan(&userID)
 	})
+
+	return userID, err
 }
 
 func (r *Repository) CreateOrder(userID int64, number string) error {
