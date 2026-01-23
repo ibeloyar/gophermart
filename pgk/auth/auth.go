@@ -10,7 +10,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const tokenDataContextKey = "auth/token"
+type TokenDataContextKeyType string
+
+const tokenDataContextKey = TokenDataContextKeyType("token")
 
 type Claims[T any] struct {
 	jwt.RegisteredClaims
