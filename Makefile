@@ -1,6 +1,6 @@
 GO = go
 MAKE = make
-DB_HOST=192.168.0.101
+DB_HOST=192.168.0.104
 DB_USER=gophermart
 DB_NAME=gophermart
 DB_PASS=gophermart
@@ -12,7 +12,7 @@ DB_MIGRATIONS_PATH="./migrations"
 
 .PHONY: build
 build:
-	$(GO) build -o cmd/gophermart cmd/gophermart/main.go
+	$(GO) build -o cmd/gophermart/gophermart cmd/gophermart/main.go
 
 .PHONY: run
 run:
@@ -26,13 +26,15 @@ test:
 .PHONY: test_cover
 test_cover:
 	$(GO) test -coverprofile=coverage.out ./...
-	$(GO) tool cover -func=coverage.out
-	rm coverage.out
+	cat coverage.out | grep -v '/mocks\|/test\|/vendor\|/internal/model' > coverage.filtered.out
+	$(GO) tool cover -func=coverage.filtered.out
+	rm coverage.out coverage.filtered.out
 
 .PHONY: test_main
 test_main:
+	$(MAKE) build
 	gophermarttest \
-	-test.v -test.run=^TestGophermart$ \
+	-test.v \
 	-gophermart-binary-path=cmd/gophermart/gophermart \
 	-gophermart-host=localhost \
 	-gophermart-port=8080 \
@@ -68,6 +70,20 @@ endif
 .PHONY: install-tools
 install-tools:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest # golang-migrate CLI
+	go install github.com/golang/mock/mockgen@latest  # mocks for tests
+
+.PHONY: mock
+mock:
+	@echo "Generating mock for pg.StorageRepo..."
+	mockgen -destination=internal/repository/pg/mocks/pg_mock.go -package=pg -source=internal/service/service.go StorageRepo
+	@echo "Generating mock for service.PasswordRepo..."
+	mockgen -destination=internal/repository/password/mocks/password_mock.go -package=password -source=internal/service/service.go PasswordRepo
+	@echo "Generating mock for service.TokensRepo..."
+	mockgen -destination=internal/repository/tokens/mocks/tokens_mock.go -package=tokens -source=internal/service/service.go TokensRepo
+
+.PHONY: run_accrual_linux
+run_accrual_linux:
+	./cmd/accrual/accrual_linux_amd64 -a localhost:4000
 
 .PHONY: help
 help:
@@ -75,6 +91,7 @@ help:
 	@echo "===================================================="
 	@echo "run               | run gophermart server"
 	@echo "build             | build gophermart"
+	@echo "mock              | generate repositories mocks for tests"
 	@echo "test              | run tests with 'clean' out"
 	@echo "test_cover        | run tests with coverage info"
 	@echo "test_main         | run main integrations tests"

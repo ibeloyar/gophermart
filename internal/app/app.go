@@ -14,7 +14,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ibeloyar/gophermart/internal/config"
 	"github.com/ibeloyar/gophermart/internal/logger"
+	"github.com/ibeloyar/gophermart/internal/repository/password"
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
+	"github.com/ibeloyar/gophermart/internal/repository/tokens"
 	"github.com/ibeloyar/gophermart/internal/service"
 
 	httpController "github.com/ibeloyar/gophermart/internal/controller/http"
@@ -27,20 +29,20 @@ func Run(cfg config.Config) error {
 	}
 	defer lg.Sync()
 
-	storage, err := pg.New(cfg.DatabaseURI)
+	storageRepo, err := pg.New(cfg.DatabaseURI, cfg.AccrualSystemAddress)
 	if err != nil {
 		return err
 	}
+	passwordRepo := password.New(cfg.PassCost)
+	tokenRepo := tokens.New(cfg.SecretKey, cfg.TokenLifetimeHours)
+
+	mainService := service.New(storageRepo, passwordRepo, tokenRepo)
 
 	router := chi.NewRouter()
-
 	//router.Use(gzip.Middleware)
 	router.Use(logger.LoggingMiddleware(lg))
 	router.Use(middleware.Recoverer)
-
-	s := service.New(storage)
-
-	handlers := httpController.New(s, lg)
+	handlers := httpController.New(mainService, lg)
 	router = httpController.InitRoutes(router, handlers)
 
 	srv := &http.Server{
@@ -59,6 +61,8 @@ func Run(cfg config.Config) error {
 		}
 	}()
 
+	storageRepo.RunOrdersAccrualUpdater()
+
 	<-signalCtx.Done()
 	lg.Info("shutting down server...")
 
@@ -69,7 +73,7 @@ func Run(cfg config.Config) error {
 		return fmt.Errorf("shutdown (server) error: %v", err)
 	}
 
-	if err := storage.Shutdown(); err != nil {
+	if err := storageRepo.Shutdown(); err != nil {
 		return fmt.Errorf("shutdown (repo) error: %v", err)
 	}
 

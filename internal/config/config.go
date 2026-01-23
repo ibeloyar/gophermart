@@ -1,9 +1,5 @@
 package config
 
-//- адрес и порт запуска сервиса: переменная окружения ОС `RUN_ADDRESS` или флаг `-a`
-//- адрес подключения к базе данных: переменная окружения ОС `DATABASE_URI` или флаг `-d`
-//- адрес системы расчёта начислений: переменная окружения ОС `ACCRUAL_SYSTEM_ADDRESS` или флаг `-r`
-
 import (
 	"flag"
 
@@ -13,21 +9,31 @@ import (
 const (
 	DefaultRunAddress           = ":8080"
 	DefaultDatabaseURI          = ""
-	DefaultAccrualSystemAddress = "./accrual/accrual_linux_amd64"
+	DefaultAccrualSystemAddress = "http://localhost:4000"
+	DefaultPassCost             = 3
+	DefaultSecretKey            = "secret"
+	DefaultTokenLifetimeHours   = 3
 )
 
 type Config struct {
 	RunAddress           string `env:"RUN_ADDRESS"`
 	DatabaseURI          string `env:"DATABASE_URI"`
 	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	PassCost             int    `env:"PASS_COST"`
+	SecretKey            string `env:"SECRET_KEY"`
+	TokenLifetimeHours   int    `env:"TOKEN_LIFETIME_HOURS"`
 }
 
 func Read() (Config, error) {
 	config := Config{}
 
-	flag.StringVar(&config.RunAddress, "a", DefaultRunAddress, "")
+	flag.StringVar(&config.RunAddress, "a", DefaultRunAddress, "Server run address")
 	flag.StringVar(&config.DatabaseURI, "d", DefaultDatabaseURI, "Database connect string")
-	flag.StringVar(&config.AccrualSystemAddress, "r", DefaultAccrualSystemAddress, "")
+	flag.StringVar(&config.AccrualSystemAddress, "r", DefaultAccrualSystemAddress, "Accrual system address protocol://hostname:port")
+
+	flag.IntVar(&config.PassCost, "p", DefaultPassCost, "Pass cost for password hash")
+	flag.StringVar(&config.SecretKey, "s", DefaultSecretKey, "Secret key for token")
+	flag.IntVar(&config.TokenLifetimeHours, "h", DefaultTokenLifetimeHours, "Token lifetime in hours")
 
 	flag.Parse()
 
