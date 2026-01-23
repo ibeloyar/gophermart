@@ -2,21 +2,22 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/ibeloyar/gophermart/internal/model"
+	"github.com/ibeloyar/gophermart/pgk/auth"
 	"go.uber.org/zap"
 )
 
 type Service interface {
 	Login(input model.LoginDTO) (string, *model.APIError)
 	Register(input model.RegisterDTO) (string, *model.APIError)
-	CreateOrder(token, orderNumber string) *model.APIError
-	GetOrders(token string) ([]model.Order, *model.APIError)
-	GetBalance(token string) (*model.Balance, *model.APIError)
-	SetWithdraw(token string, input model.SetWithdrawDTO) *model.APIError
-	GetWithdraws(token string) ([]model.Withdraw, *model.APIError)
+
+	CreateOrder(userID int64, orderNumber string) *model.APIError
+	GetOrders(userID int64) ([]model.Order, *model.APIError)
+	GetBalance(userID int64) (*model.Balance, *model.APIError)
+	SetWithdraw(userID int64, input model.SetWithdrawDTO) *model.APIError
+	GetWithdraws(userID int64) ([]model.Withdraw, *model.APIError)
 }
 
 type Controller struct {
@@ -39,13 +40,13 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, apiErr := c.service.Register(body)
+	bearerToken, apiErr := c.service.Register(body)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return
 	}
 
-	w.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	w.Header().Set("Authorization", bearerToken)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -57,13 +58,13 @@ func (c *Controller) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, apiErr := c.service.Login(body)
+	bearerToken, apiErr := c.service.Login(body)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return
 	}
 
-	w.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	w.Header().Set("Authorization", bearerToken)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -75,9 +76,7 @@ func (c *Controller) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	apiErr := c.service.CreateOrder(r.Header.Get("Authorization"), orderNumber)
+	apiErr := c.service.CreateOrder(auth.GetTokenInfo[model.TokenInfo](r).ID, orderNumber)
 	if apiErr != nil {
 		if apiErr.Code == http.StatusOK {
 			w.WriteHeader(http.StatusOK)
@@ -92,7 +91,7 @@ func (c *Controller) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
-	orders, apiErr := c.service.GetOrders(r.Header.Get("Authorization"))
+	orders, apiErr := c.service.GetOrders(auth.GetTokenInfo[model.TokenInfo](r).ID)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return
@@ -110,7 +109,7 @@ func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) GetBalance(w http.ResponseWriter, r *http.Request) {
-	balance, apiErr := c.service.GetBalance(r.Header.Get("Authorization"))
+	balance, apiErr := c.service.GetBalance(auth.GetTokenInfo[model.TokenInfo](r).ID)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return
@@ -135,7 +134,7 @@ func (c *Controller) SetWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiErr := c.service.SetWithdraw(r.Header.Get("Authorization"), body)
+	apiErr := c.service.SetWithdraw(auth.GetTokenInfo[model.TokenInfo](r).ID, body)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return
@@ -145,7 +144,7 @@ func (c *Controller) SetWithdrawal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
-	withdrawals, apiErr := c.service.GetWithdraws(r.Header.Get("Authorization"))
+	withdrawals, apiErr := c.service.GetWithdraws(auth.GetTokenInfo[model.TokenInfo](r).ID)
 	if apiErr != nil {
 		http.Error(w, apiErr.Message, apiErr.Code)
 		return

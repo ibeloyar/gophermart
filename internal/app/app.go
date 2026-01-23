@@ -13,11 +13,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ibeloyar/gophermart/internal/config"
-	"github.com/ibeloyar/gophermart/internal/logger"
 	"github.com/ibeloyar/gophermart/internal/repository/password"
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
-	"github.com/ibeloyar/gophermart/internal/repository/tokens"
 	"github.com/ibeloyar/gophermart/internal/service"
+	"github.com/ibeloyar/gophermart/pgk/logger"
 
 	httpController "github.com/ibeloyar/gophermart/internal/controller/http"
 )
@@ -34,16 +33,16 @@ func Run(cfg config.Config) error {
 		return err
 	}
 	passwordRepo := password.New(cfg.PassCost)
-	tokenRepo := tokens.New(cfg.SecretKey, cfg.TokenLifetimeHours)
+	//tokenRepo := tokens.New(cfg.SecretKey, cfg.TokenLifetimeHours)
 
-	mainService := service.New(storageRepo, passwordRepo, tokenRepo)
+	mainService := service.New(storageRepo, passwordRepo, time.Duration(cfg.TokenLifetimeHours)*time.Hour, cfg.SecretKey)
 
 	router := chi.NewRouter()
 	//router.Use(gzip.Middleware)
 	router.Use(logger.LoggingMiddleware(lg))
 	router.Use(middleware.Recoverer)
 	handlers := httpController.New(mainService, lg)
-	router = httpController.InitRoutes(router, handlers)
+	router = httpController.InitRoutes(router, handlers, cfg.SecretKey)
 
 	srv := &http.Server{
 		Addr:    cfg.RunAddress,

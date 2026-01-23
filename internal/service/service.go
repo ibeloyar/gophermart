@@ -4,9 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ibeloyar/gophermart/internal/model"
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
+	"github.com/ibeloyar/gophermart/pgk/auth"
 )
 
 type StorageRepo interface {
@@ -24,10 +26,10 @@ type PasswordRepo interface {
 	CheckPasswordHash(password, hash string) bool
 }
 
-type TokensRepo interface {
-	GenerateToken(input model.TokenInfo) (token string, err error)
-	VerifyJWTToken(tokenString string) (*model.TokenInfo, error)
-}
+//type TokensRepo interface {
+//	GenerateToken(input model.TokenInfo) (token string, err error)
+//	VerifyJWTToken(tokenString string) (*model.TokenInfo, error)
+//}
 
 type AccrualRepo interface {
 	GetAccrual(orderNumber string) (*model.Accrual, error)
@@ -36,14 +38,20 @@ type AccrualRepo interface {
 type Service struct {
 	storage  StorageRepo
 	password PasswordRepo
-	tokens   TokensRepo
+	//tokens   TokensRepo
+
+	tokenSecret string
+	tokenExp    time.Duration
 }
 
-func New(s StorageRepo, p PasswordRepo, t TokensRepo) *Service {
+func New(s StorageRepo, p PasswordRepo, tokenExp time.Duration, tokenSecret string) *Service {
 	return &Service{
 		storage:  s,
 		password: p,
-		tokens:   t,
+		//tokens:   t,
+
+		tokenExp:    tokenExp,
+		tokenSecret: tokenSecret,
 	}
 }
 
@@ -70,10 +78,10 @@ func (s *Service) Login(input model.LoginDTO) (string, *model.APIError) {
 		}
 	}
 
-	token, err := s.tokens.GenerateToken(model.TokenInfo{
+	token, err := auth.GenerateBearerToken(model.TokenInfo{
 		ID:    user.ID,
 		Login: user.Login,
-	})
+	}, s.tokenExp, s.tokenSecret)
 	if err != nil {
 		return "", &model.APIError{
 			Code:    http.StatusInternalServerError,
@@ -117,10 +125,10 @@ func (s *Service) Register(input model.RegisterDTO) (string, *model.APIError) {
 		}
 	}
 
-	token, err := s.tokens.GenerateToken(model.TokenInfo{
+	token, err := auth.GenerateBearerToken(model.TokenInfo{
 		ID:    user.ID,
 		Login: user.Login,
-	})
+	}, s.tokenExp, s.tokenSecret)
 	if err != nil {
 		return "", &model.APIError{
 			Code:    http.StatusInternalServerError,
@@ -131,33 +139,21 @@ func (s *Service) Register(input model.RegisterDTO) (string, *model.APIError) {
 	return token, nil
 }
 
-func (s *Service) CreateOrder(token, orderNumber string) *model.APIError {
-	//- `401` — пользователь не аутентифицирован;
-	tokenInfo, err := s.tokens.VerifyJWTToken(token)
-	if err != nil {
-		return &model.APIError{
-			Code:    http.StatusUnauthorized,
-			Message: err.Error(),
-		}
-	}
-
-	//- `400` — неверный формат запроса;
-	//- `422` — неверный формат номера заказа;
+func (s *Service) CreateOrder(userID int64, orderNumber string) *model.APIError {
 	if err := validateOrderNumber(orderNumber); err != nil {
 		return err
 	}
 
-	//- `500` — внутренняя ошибка сервера.
-	err = s.storage.CreateOrder(tokenInfo.ID, orderNumber)
+	err := s.storage.CreateOrder(userID, orderNumber)
 	if err != nil {
-		//- `200` — номер заказа уже был загружен этим пользователем;
+		// номер заказа уже был загружен этим пользователем;
 		if errors.Is(err, model.ErrOrderHasBeenLoadedCurrentUser) {
 			return &model.APIError{
 				Code:    http.StatusOK,
 				Message: model.ErrOrderHasBeenLoadedCurrentUser.Error(),
 			}
 		}
-		//- `409` — номер заказа уже был загружен другим пользователем;
+		// номер заказа уже был загружен другим пользователем;
 		if errors.Is(err, model.ErrOrderHasBeenLoadedSomeUser) {
 			return &model.APIError{
 				Code:    http.StatusConflict,
@@ -170,20 +166,11 @@ func (s *Service) CreateOrder(token, orderNumber string) *model.APIError {
 		}
 	}
 
-	//- `202` — новый номер заказа принят в обработку;
 	return nil
 }
 
-func (s *Service) GetOrders(token string) ([]model.Order, *model.APIError) {
-	tokenInfo, err := s.tokens.VerifyJWTToken(token)
-	if err != nil {
-		return nil, &model.APIError{
-			Code:    http.StatusUnauthorized,
-			Message: err.Error(),
-		}
-	}
-
-	orders, err := s.storage.GetOrdersByUserID(tokenInfo.ID)
+func (s *Service) GetOrders(userID int64) ([]model.Order, *model.APIError) {
+	orders, err := s.storage.GetOrdersByUserID(userID)
 	if err != nil {
 		return nil, &model.APIError{
 			Code:    http.StatusInternalServerError,
@@ -201,16 +188,8 @@ func (s *Service) GetOrders(token string) ([]model.Order, *model.APIError) {
 	return orders, nil
 }
 
-func (s *Service) GetBalance(token string) (*model.Balance, *model.APIError) {
-	tokenInfo, err := s.tokens.VerifyJWTToken(token)
-	if err != nil {
-		return nil, &model.APIError{
-			Code:    http.StatusUnauthorized,
-			Message: err.Error(),
-		}
-	}
-
-	balance, err := s.storage.GetBalanceByUserID(tokenInfo.ID)
+func (s *Service) GetBalance(userID int64) (*model.Balance, *model.APIError) {
+	balance, err := s.storage.GetBalanceByUserID(userID)
 	if err != nil {
 		return nil, &model.APIError{
 			Code:    http.StatusInternalServerError,
@@ -221,16 +200,8 @@ func (s *Service) GetBalance(token string) (*model.Balance, *model.APIError) {
 	return balance, nil
 }
 
-func (s *Service) SetWithdraw(token string, input model.SetWithdrawDTO) *model.APIError {
-	tokenInfo, err := s.tokens.VerifyJWTToken(token)
-	if err != nil {
-		return &model.APIError{
-			Code:    http.StatusUnauthorized,
-			Message: err.Error(),
-		}
-	}
-
-	err = s.storage.SetWithdraw(tokenInfo.ID, input)
+func (s *Service) SetWithdraw(userID int64, input model.SetWithdrawDTO) *model.APIError {
+	err := s.storage.SetWithdraw(userID, input)
 	if err != nil {
 		return &model.APIError{
 			Code:    http.StatusInternalServerError,
@@ -241,16 +212,8 @@ func (s *Service) SetWithdraw(token string, input model.SetWithdrawDTO) *model.A
 	return nil
 }
 
-func (s *Service) GetWithdraws(token string) ([]model.Withdraw, *model.APIError) {
-	tokenInfo, err := s.tokens.VerifyJWTToken(token)
-	if err != nil {
-		return nil, &model.APIError{
-			Code:    http.StatusUnauthorized,
-			Message: err.Error(),
-		}
-	}
-
-	withdraws, err := s.storage.GetWithdrawsByUserID(tokenInfo.ID)
+func (s *Service) GetWithdraws(userID int64) ([]model.Withdraw, *model.APIError) {
+	withdraws, err := s.storage.GetWithdrawsByUserID(userID)
 	if err != nil {
 		return nil, &model.APIError{
 			Code:    http.StatusInternalServerError,
