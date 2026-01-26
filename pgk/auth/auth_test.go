@@ -133,7 +133,7 @@ func TestGetTokenInfo_NotFound(t *testing.T) {
 }
 
 func TestGetTokenInfo_WrongType(t *testing.T) {
-	ctx := context.WithValue(context.Background(), "key", "wrong type")
+	ctx := context.WithValue(context.Background(), TokenDataContextKey, "wrong type")
 	req := httptest.NewRequest("GET", "/", nil).WithContext(ctx)
 
 	info := GetTokenInfo[TokenInfo](req)

@@ -26,7 +26,6 @@ func TestLoggingMiddleware(t *testing.T) {
 	var buf bytes.Buffer
 
 	config := zap.NewDevelopmentConfig()
-	config.OutputPaths = []string{"null"} // отключаем консоль
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(config.EncoderConfig),
 		zapcore.AddSync(&buf),
