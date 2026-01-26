@@ -24,9 +24,10 @@ run_accrual_linux:
 
 .PHONY: mock
 mock:
-	@echo "Generating mock for pg.StorageRepo..."
-	mockgen -destination=internal/repository/pg/mocks/pg_mock.go -package=pg -source=internal/service/service.go StorageRepo
-	mockgen -destination=internal/service/mocks/password_mock.go -package=pg -source=internal/service/service.go PasswordService
+	@echo "Generating mock for StorageRepo..."
+	mockgen -destination=internal/repository/mocks/mock.go -package=-source=internal/service/service.go StorageRepo
+	@echo "Generating mock for service.Service..."
+	mockgen -destination=internal/service/mocks/service_mock.go -package=service -source=internal/controller/http/handlers.go
 
 .PHONY: test
 test:

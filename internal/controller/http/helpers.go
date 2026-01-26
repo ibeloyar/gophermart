@@ -14,6 +14,10 @@ func readBody[T any](r *http.Request) (T, error) {
 
 	contentType := r.Header.Get("Content-Type")
 
+	if contentType == "" {
+		contentType = "application/json"
+	}
+
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		return body, fmt.Errorf("failed to read request body: %w", err)
