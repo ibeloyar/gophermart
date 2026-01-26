@@ -130,7 +130,7 @@ func TestService_Login_Success(t *testing.T) {
 	user := &model.User{
 		ID:       123,
 		Login:    "testuser",
-		Password: hashedPass, // hashed password
+		Password: hashedPass,
 	}
 
 	mockStorage.EXPECT().

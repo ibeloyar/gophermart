@@ -26,7 +26,6 @@ type MockRepository struct {
 	*Repository
 }
 
-// Тест для getAccrual
 func TestRepository_getAccrual_Success(t *testing.T) {
 	repo := &Repository{accrualAddress: "http://localhost:8080"}
 
@@ -46,7 +45,6 @@ func TestRepository_getAccrual_Success(t *testing.T) {
 	assert.Equal(t, model.OrderStatus("PROCESSED"), accrual.Status)
 }
 
-// Тест для getAccrual с ошибкой HTTP
 func TestRepository_getAccrual_HTTPError(t *testing.T) {
 	repo := &Repository{accrualAddress: "http://localhost:8080"}
 

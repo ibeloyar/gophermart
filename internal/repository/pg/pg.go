@@ -293,7 +293,7 @@ func getAttemptDelay(attempt int) time.Duration {
 		return 1 * time.Second
 	case 1:
 		return 3 * time.Second
-	default: // attempt >= 2
+	default:
 		return 5 * time.Second
 	}
 }

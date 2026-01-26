@@ -18,7 +18,6 @@ func TestRepository_GetUserByLogin_Found(t *testing.T) {
 
 	repo := &Repository{db: db, classifier: NewPostgresErrorClassifier()}
 
-	// ✅ Правильные колонки из запроса SELECT * FROM users
 	createdAt := time.Now()
 	rows := sqlmock.NewRows([]string{"id", "login", "password", "created_at"}).
 		AddRow(123, "testuser", "hashed", createdAt)
@@ -157,7 +156,7 @@ func TestRepository_GetBalanceByUserID_Success(t *testing.T) {
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(amount\), 0\) AS current, COALESCE\(SUM\(CASE WHEN amount < 0 THEN ABS\(amount\) ELSE 0 END\), 0\) AS withdrawn FROM balance WHERE user_id = \$1`).
 		WithArgs(int64(123)).
 		WillReturnRows(sqlmock.NewRows([]string{"current", "withdrawn"}).
-			AddRow(float32(100.5), float32(50.0))) // ✅ float32 для model.Balance
+			AddRow(float32(100.5), float32(50.0)))
 
 	balance, err := repo.GetBalanceByUserID(123)
 

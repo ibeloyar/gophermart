@@ -78,7 +78,6 @@ func TestReadBody_JSON_Invalid_Fail(t *testing.T) {
 }
 
 func TestReadBody_ReadError(t *testing.T) {
-	// Создаем request с нечитаемым body
 	req, _ := http.NewRequest("POST", "/", errorReader{})
 	req.Header.Set("Content-Type", "application/json")
 
