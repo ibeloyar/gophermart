@@ -3,6 +3,7 @@ module github.com/ibeloyar/gophermart
 go 1.24.12
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/golang-jwt/jwt/v5 v5.3.0
