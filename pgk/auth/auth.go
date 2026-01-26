@@ -12,7 +12,7 @@ import (
 
 type TokenDataContextKeyType string
 
-const tokenDataContextKey = TokenDataContextKeyType("token")
+const TokenDataContextKey = TokenDataContextKeyType("token")
 
 type Claims[T any] struct {
 	jwt.RegisteredClaims
@@ -73,14 +73,14 @@ func AuthBearerMiddlewareInit[T any](secret string) func(http.Handler) http.Hand
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), tokenDataContextKey, tokenInfo)
+			ctx := context.WithValue(r.Context(), TokenDataContextKey, tokenInfo)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 func GetTokenInfo[T any](r *http.Request) *T {
-	tokenInfo, ok := r.Context().Value(tokenDataContextKey).(*T)
+	tokenInfo, ok := r.Context().Value(TokenDataContextKey).(*T)
 	if !ok {
 		return nil
 	}
