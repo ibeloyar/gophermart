@@ -18,6 +18,15 @@ build:
 run:
 	$(GO) run cmd/gophermart/main.go -d $(DB_STRING)
 
+.PHONY: run_accrual_linux
+run_accrual_linux:
+	./cmd/accrual/accrual_linux_amd64 -a localhost:4000
+
+.PHONY: mock
+mock:
+	@echo "Generating mock for pg.StorageRepo..."
+	mockgen -destination=internal/repository/pg/mocks/pg_mock.go -package=pg -source=internal/service/service.go StorageRepo
+	mockgen -destination=internal/service/mocks/password_mock.go -package=pg -source=internal/service/service.go PasswordService
 
 .PHONY: test
 test:
@@ -72,21 +81,13 @@ install-tools:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest # golang-migrate CLI
 	go install github.com/golang/mock/mockgen@latest  # mocks for tests
 
-.PHONY: mock
-mock:
-	@echo "Generating mock for pg.StorageRepo..."
-	mockgen -destination=internal/repository/pg/mocks/pg_mock.go -package=pg -source=internal/service/service.go StorageRepo
-
-.PHONY: run_accrual_linux
-run_accrual_linux:
-	./cmd/accrual/accrual_linux_amd64 -a localhost:4000
-
 .PHONY: help
 help:
 	@echo "command           | description"
 	@echo "===================================================="
-	@echo "run               | run gophermart server"
 	@echo "build             | build gophermart"
+	@echo "run               | run gophermart server"
+	@echo "run_accrual_linux | run accrual server for linux"
 	@echo "mock              | generate repositories mocks for tests"
 	@echo "test              | run tests with 'clean' out"
 	@echo "test_cover        | run tests with coverage info"

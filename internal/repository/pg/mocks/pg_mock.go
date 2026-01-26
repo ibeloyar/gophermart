@@ -11,6 +11,58 @@ import (
 	model "github.com/ibeloyar/gophermart/internal/model"
 )
 
+// MockPasswordService is a mock of PasswordService interface.
+type MockPasswordService struct {
+	ctrl     *gomock.Controller
+	recorder *MockPasswordServiceMockRecorder
+}
+
+// MockPasswordServiceMockRecorder is the mock recorder for MockPasswordService.
+type MockPasswordServiceMockRecorder struct {
+	mock *MockPasswordService
+}
+
+// NewMockPasswordService creates a new mock instance.
+func NewMockPasswordService(ctrl *gomock.Controller) *MockPasswordService {
+	mock := &MockPasswordService{ctrl: ctrl}
+	mock.recorder = &MockPasswordServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPasswordService) EXPECT() *MockPasswordServiceMockRecorder {
+	return m.recorder
+}
+
+// CheckPasswordHash mocks base method.
+func (m *MockPasswordService) CheckPasswordHash(password, hash string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckPasswordHash", password, hash)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// CheckPasswordHash indicates an expected call of CheckPasswordHash.
+func (mr *MockPasswordServiceMockRecorder) CheckPasswordHash(password, hash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckPasswordHash", reflect.TypeOf((*MockPasswordService)(nil).CheckPasswordHash), password, hash)
+}
+
+// HashPassword mocks base method.
+func (m *MockPasswordService) HashPassword(password string, cost int) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HashPassword", password, cost)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HashPassword indicates an expected call of HashPassword.
+func (mr *MockPasswordServiceMockRecorder) HashPassword(password, cost interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HashPassword", reflect.TypeOf((*MockPasswordService)(nil).HashPassword), password, cost)
+}
+
 // MockStorageRepo is a mock of StorageRepo interface.
 type MockStorageRepo struct {
 	ctrl     *gomock.Controller
@@ -49,11 +101,12 @@ func (mr *MockStorageRepoMockRecorder) CreateOrder(userID, number interface{}) *
 }
 
 // CreateUser mocks base method.
-func (m *MockStorageRepo) CreateUser(user model.User) error {
+func (m *MockStorageRepo) CreateUser(user model.User) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", user)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateUser indicates an expected call of CreateUser.
