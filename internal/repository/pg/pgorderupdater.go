@@ -5,16 +5,33 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/ibeloyar/gophermart/internal/model"
 )
 
-func (r *Repository) RunOrdersAccrualUpdater() {
-	//ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
+var numWorkers = runtime.NumCPU()
 
+func (r *Repository) processOrderWorker(ctx context.Context, order model.Order) {
+	accrual, err := r.getAccrual(ctx, order.Number)
+	if err != nil {
+		// ошибка получения accrual для заказа
+		return
+	}
+
+	if accrual != nil {
+		if err := r.updateOrderStatusAndAccrual(ctx, order.UserID, order.Number,
+			accrual.Status, accrual.Accrual); err != nil {
+			// ошибка обновления статуса заказа
+		}
+	}
+}
+
+// RunOrdersAccrualUpdater - запускает обновление
+func (r *Repository) RunOrdersAccrualUpdater() {
 	ticker := time.NewTicker(5 * time.Second)
 
 	go func() {
@@ -23,25 +40,32 @@ func (r *Repository) RunOrdersAccrualUpdater() {
 			case <-ticker.C:
 				orders, err := r.getOrdersWithNewOrProcessingStatus()
 				if err != nil {
-					log.Printf("failed to get orders with NEW/PROCESSING status: %v", err)
+					// "ошибка получения заказов NEW/PROCESSING"
 					continue
 				}
 
-				for _, order := range orders {
-					accrual, err := r.getAccrual(context.Background(), order.Number)
-					if err != nil {
-						log.Printf("failed to get accrual for order %s: %v", order.Number, err)
+				if len(orders) > 0 {
+					tasks := make(chan model.Order, len(orders))
+					var wg sync.WaitGroup
+
+					wg.Add(numWorkers)
+					for i := 0; i < numWorkers; i++ {
+						go func() {
+							defer wg.Done()
+							for order := range tasks {
+								r.processOrderWorker(context.Background(), order)
+							}
+						}()
 					}
 
-					if accrual != nil {
-						if err := r.updateOrderStatusAndAccrual(context.Background(), order.UserID, order.Number, accrual.Status, accrual.Accrual); err != nil {
-							log.Printf("failed to update order status for %s: %v", order.Number, err)
-						}
+					for _, order := range orders {
+						tasks <- order
 					}
+					close(tasks)
+					wg.Wait()
 				}
 
 			case <-r.stopAccrualChan:
-				//cancel()
 				ticker.Stop()
 				return
 			}
@@ -64,9 +88,7 @@ func (r *Repository) getAccrual(ctx context.Context, orderNumber string) (*model
 		return nil, err
 	}
 
-	client := http.Client{}
-
-	response, err := client.Do(req)
+	response, err := r.retryClient.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}

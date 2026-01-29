@@ -12,6 +12,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ibeloyar/gophermart/internal/model"
+	"github.com/ibeloyar/gophermart/pgk/retryablehttp"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -28,6 +29,7 @@ type Repository struct {
 	db             *sql.DB
 	accrualAddress string
 	classifier     *PostgresErrorClassifier
+	retryClient    *retryablehttp.RetryableClient
 
 	stopAccrualChan chan struct{}
 }
@@ -67,6 +69,7 @@ func New(databaseURI, accrualAddress string) (*Repository, error) {
 		accrualAddress:  accrualAddress,
 		stopAccrualChan: make(chan struct{}),
 		classifier:      NewPostgresErrorClassifier(),
+		retryClient:     retryablehttp.NewRetryableClient(retryablehttp.RetryConfig{}),
 	}, nil
 }
 
