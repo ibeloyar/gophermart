@@ -15,18 +15,21 @@ import (
 
 var numWorkers = runtime.NumCPU()
 
-// TODO: logs
 func (r *Repository) processOrderWorker(ctx context.Context, order model.Order) {
 	accrual, err := r.getAccrual(ctx, order.Number)
 	if err != nil {
-		// ошибка получения accrual для заказа
+		r.lg.Errorf("getting accruals error: %v", err)
 		return
 	}
 
 	if accrual != nil {
-		if err := r.updateOrderStatusAndAccrual(ctx, order.UserID, order.Number,
-			accrual.Status, accrual.Accrual); err != nil {
-			// ошибка обновления статуса заказа
+		if err := r.updateOrderStatusAndAccrual(ctx,
+			order.UserID,
+			order.Number,
+			accrual.Status,
+			accrual.Accrual,
+		); err != nil {
+			r.lg.Errorf("updating order status error: %v", err)
 		}
 	}
 }

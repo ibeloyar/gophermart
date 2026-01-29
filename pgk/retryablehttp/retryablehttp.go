@@ -51,37 +51,32 @@ func (c *RetryableClient) isRetryable(resp *http.Response, err error) bool {
 		return false
 	}
 
-	// Retry для серверных ошибок и rate limiting
 	statusCode := resp.StatusCode
-	return statusCode == 0 || // Неизвестная ошибка
-		(statusCode >= 500 && statusCode <= 599) || // 5xx, 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout etc
-		statusCode == 429 || // Too Many Requests
-		statusCode == 408 // Request Timeout
+
+	return statusCode == 0 || statusCode == 429 || statusCode == 408 ||
+		(statusCode >= 500 && statusCode <= 599)
 }
 
+// Do - отправляет запрос
 func (c *RetryableClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var err error
 
 	for attempt := 0; attempt <= c.retryConfig.MaxRetries; attempt++ {
-		// Проверка отмены контекста
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 
 		resp, err = c.client.Do(req)
 
-		// Успех
 		if err == nil && !c.isRetryable(resp, nil) {
 			return resp, nil
 		}
 
-		// Закрываем тело ответа при retry
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
 
-		// Последняя попытка - возвращаем ошибку
 		if attempt == c.retryConfig.MaxRetries {
 			if resp != nil {
 				return resp, fmt.Errorf("последняя попытка failed: %s", resp.Status)
@@ -89,7 +84,6 @@ func (c *RetryableClient) Do(ctx context.Context, req *http.Request) (*http.Resp
 			return nil, fmt.Errorf("последняя попытка failed: %v", err)
 		}
 
-		// Exponential backoff + jitter
 		delay := c.backoffDelay(attempt)
 		select {
 		case <-ctx.Done():
@@ -101,7 +95,7 @@ func (c *RetryableClient) Do(ctx context.Context, req *http.Request) (*http.Resp
 	return nil, fmt.Errorf("unexpected error")
 }
 
-// backoffDelay вычисляет задержку с экспоненциальным ростом и jitter
+// backoffDelay - вычисляет задержку с экспоненциальным ростом и jitter
 func (c *RetryableClient) backoffDelay(attempt int) time.Duration {
 	backoff := time.Duration(1<<uint(attempt)) * c.retryConfig.BaseDelay
 	if backoff > c.retryConfig.MaxDelay {
