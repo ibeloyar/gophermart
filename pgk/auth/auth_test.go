@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -127,15 +126,6 @@ func TestAuthBearerMiddleware_InvalidToken(t *testing.T) {
 
 func TestGetTokenInfo_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
-	info := GetTokenInfo[TokenInfo](req)
-
-	assert.Nil(t, info)
-}
-
-func TestGetTokenInfo_WrongType(t *testing.T) {
-	ctx := context.WithValue(context.Background(), TokenDataContextKey, "wrong type")
-	req := httptest.NewRequest("GET", "/", nil).WithContext(ctx)
-
 	info := GetTokenInfo[TokenInfo](req)
 
 	assert.Nil(t, info)

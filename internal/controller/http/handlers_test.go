@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -86,9 +85,10 @@ func TestController_CreateOrder_Success(t *testing.T) {
 		Times(1)
 
 	body, _ := json.Marshal(orderNumber)
-	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodPost, "/orders", &model.TokenInfo{ID: userID}, bytes.NewReader(body))
+	//req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.CreateOrder(w, req)
@@ -116,9 +116,10 @@ func TestController_CreateOrder_AlreadyLoadedCurrentUser(t *testing.T) {
 		Times(1)
 
 	body, _ := json.Marshal(orderNumber)
-	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodPost, "/orders", &model.TokenInfo{ID: userID}, bytes.NewReader(body))
+	//req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.CreateOrder(w, req)
@@ -146,9 +147,10 @@ func TestController_CreateOrder_ConflictOtherUser(t *testing.T) {
 		Times(1)
 
 	body, _ := json.Marshal(orderNumber)
-	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodPost, "/orders", &model.TokenInfo{ID: userID}, bytes.NewReader(body))
+	//req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.CreateOrder(w, req)
@@ -171,9 +173,10 @@ func TestController_GetOrders_Success(t *testing.T) {
 		Return(orders, nil).
 		Times(1)
 
-	req := httptest.NewRequest(http.MethodGet, "/orders", nil)
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodGet, "/orders", &model.TokenInfo{ID: userID}, nil)
+	//req := httptest.NewRequest(http.MethodGet, "/orders", nil)
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.GetOrders(w, req)
@@ -199,9 +202,10 @@ func TestController_GetOrders_ServiceError(t *testing.T) {
 		Return(nil, apiErr).
 		Times(1)
 
-	req := httptest.NewRequest(http.MethodGet, "/orders", nil)
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodGet, "/orders", &model.TokenInfo{ID: userID}, nil)
+	//req := httptest.NewRequest(http.MethodGet, "/orders", nil)
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.GetOrders(w, req)
@@ -224,9 +228,10 @@ func TestController_GetBalance_Success(t *testing.T) {
 		Return(balance, nil).
 		Times(1)
 
-	req := httptest.NewRequest(http.MethodGet, "/balance", nil)
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodGet, "/balance", &model.TokenInfo{ID: userID}, nil)
+	//req := httptest.NewRequest(http.MethodGet, "/balance", nil)
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.GetBalance(w, req)
@@ -250,9 +255,11 @@ func TestController_SetWithdrawal_Success(t *testing.T) {
 		Times(1)
 
 	body, _ := json.Marshal(withdraw)
-	req := httptest.NewRequest(http.MethodPost, "/withdraw", bytes.NewReader(body))
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+
+	//req := httptest.NewRequest(http.MethodPost, "/withdraw", bytes.NewReader(body))
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodPost, "/withdraw", &model.TokenInfo{ID: userID}, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	controller.SetWithdrawal(w, req)
@@ -274,9 +281,11 @@ func TestController_GetWithdrawals_Empty(t *testing.T) {
 		Return([]model.Withdraw{}, nil).
 		Times(1)
 
-	req := httptest.NewRequest(http.MethodGet, "/withdrawals", nil)
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodGet, "/withdrawals", &model.TokenInfo{ID: userID}, nil)
+	//req := httptest.NewRequest(http.MethodGet, "/withdrawals", nil)
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 
 	controller.GetWithdrawals(w, req)
@@ -299,9 +308,10 @@ func TestController_GetWithdrawals_WithData(t *testing.T) {
 		Return(withdrawals, nil).
 		Times(1)
 
-	req := httptest.NewRequest(http.MethodGet, "/withdrawals", nil)
-	ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
-	req = req.WithContext(ctx)
+	req := auth.NewAuthenticatedRequest(http.MethodGet, "/withdrawals", &model.TokenInfo{ID: userID}, nil)
+	//req := httptest.NewRequest(http.MethodGet, "/withdrawals", nil)
+	//ctx := context.WithValue(req.Context(), auth.TokenDataContextKey, &model.TokenInfo{ID: userID})
+	//req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	controller.GetWithdrawals(w, req)

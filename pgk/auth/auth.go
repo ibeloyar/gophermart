@@ -3,16 +3,18 @@ package auth
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type TokenDataContextKeyType string
+type tokenDataContextKeyType string
 
-const TokenDataContextKey = TokenDataContextKeyType("token")
+const tokenDataContextKey = tokenDataContextKeyType("token")
 
 type Claims[T any] struct {
 	jwt.RegisteredClaims
@@ -73,17 +75,27 @@ func AuthBearerMiddlewareInit[T any](secret string) func(http.Handler) http.Hand
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), TokenDataContextKey, tokenInfo)
+			ctx := context.WithValue(r.Context(), tokenDataContextKey, tokenInfo)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 func GetTokenInfo[T any](r *http.Request) *T {
-	tokenInfo, ok := r.Context().Value(TokenDataContextKey).(*T)
+	ctx := r.Context()
+
+	tokenInfo, ok := ctx.Value(tokenDataContextKey).(*T)
 	if !ok {
 		return nil
 	}
 
 	return tokenInfo
+}
+
+func NewAuthenticatedRequest[T any](method, url string, tokenInfo *T, body io.Reader) *http.Request {
+	req := httptest.NewRequest(method, url, body)
+
+	ctx := context.WithValue(req.Context(), tokenDataContextKey, tokenInfo)
+
+	return req.WithContext(ctx)
 }
