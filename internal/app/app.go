@@ -22,7 +22,7 @@ import (
 )
 
 func Run(cfg config.Config, zapLogger *zap.SugaredLogger) error {
-	storageRepo, err := pg.New(cfg.DatabaseURI, cfg.AccrualSystemAddress)
+	storageRepo, err := pg.New(cfg.DatabaseURI, cfg.AccrualSystemAddress, zapLogger)
 	if err != nil {
 		return fmt.Errorf("failed to create a DB connection: %w", err)
 	}
@@ -49,8 +49,6 @@ func Run(cfg config.Config, zapLogger *zap.SugaredLogger) error {
 			zapLogger.Fatalf("server ListenAndServe error: %v", err)
 		}
 	}()
-
-	storageRepo.RunOrdersAccrualUpdater()
 
 	<-signalCtx.Done()
 	zapLogger.Info("shutting down server...")

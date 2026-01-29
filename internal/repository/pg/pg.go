@@ -15,6 +15,7 @@ import (
 	"github.com/ibeloyar/gophermart/pgk/retryablehttp"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 
 type Repository struct {
 	db             *sql.DB
+	lg             *zap.SugaredLogger
 	accrualAddress string
 	classifier     *PostgresErrorClassifier
 	retryClient    *retryablehttp.RetryableClient
@@ -34,7 +36,7 @@ type Repository struct {
 	stopAccrualChan chan struct{}
 }
 
-func New(databaseURI, accrualAddress string) (*Repository, error) {
+func New(databaseURI, accrualAddress string, lg *zap.SugaredLogger) (*Repository, error) {
 	pool, err := pgxpool.New(context.Background(), databaseURI)
 	if err != nil {
 		return nil, err
@@ -64,13 +66,18 @@ func New(databaseURI, accrualAddress string) (*Repository, error) {
 		return nil, err
 	}
 
-	return &Repository{
+	repo := &Repository{
 		db:              db,
+		lg:              lg,
 		accrualAddress:  accrualAddress,
-		stopAccrualChan: make(chan struct{}),
 		classifier:      NewPostgresErrorClassifier(),
 		retryClient:     retryablehttp.NewRetryableClient(retryablehttp.RetryConfig{}),
-	}, nil
+		stopAccrualChan: make(chan struct{}),
+	}
+
+	repo.RunOrdersAccrualUpdater()
+
+	return repo, nil
 }
 
 func (r *Repository) GetUserByLogin(login string) *model.User {
@@ -188,11 +195,11 @@ func (r *Repository) SetWithdraw(userID int64, input model.SetWithdrawDTO) error
 		if err != nil {
 			return err
 		}
+		defer tx.Rollback()
 
 		// блокируем строки баланса
 		_, err = tx.ExecContext(ctx, `SELECT id FROM balance WHERE user_id = $1 FOR UPDATE`, userID)
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 
@@ -201,14 +208,12 @@ func (r *Repository) SetWithdraw(userID int64, input model.SetWithdrawDTO) error
 		querySelectCurrentBalance := `SELECT COALESCE(SUM(amount), 0) AS current FROM balance WHERE user_id = $1`
 		err = tx.QueryRowContext(ctx, querySelectCurrentBalance, userID).Scan(&current)
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 
 		// проверка остатка
 		absAmount := math.Abs(input.Sum)
 		if current < absAmount {
-			_ = tx.Rollback()
 			return model.ErrInsufficientFunds
 		}
 
@@ -217,7 +222,6 @@ func (r *Repository) SetWithdraw(userID int64, input model.SetWithdrawDTO) error
 		_, err = tx.ExecContext(ctx, queryInsertBalance, userID, input.Order, -absAmount)
 
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 

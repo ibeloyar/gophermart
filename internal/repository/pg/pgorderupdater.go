@@ -15,6 +15,7 @@ import (
 
 var numWorkers = runtime.NumCPU()
 
+// TODO: logs
 func (r *Repository) processOrderWorker(ctx context.Context, order model.Order) {
 	accrual, err := r.getAccrual(ctx, order.Number)
 	if err != nil {
@@ -147,6 +148,7 @@ func (r *Repository) updateOrderStatusAndAccrual(ctx context.Context, userID int
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	_, err = tx.ExecContext(ctx, `UPDATE orders SET status = $1, accrual = $2 WHERE number = $3`,
 		status,
@@ -162,13 +164,11 @@ func (r *Repository) updateOrderStatusAndAccrual(ctx context.Context, userID int
 		)
 
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 	}
 
 	if err != nil {
-		_ = tx.Rollback()
 		return err
 	}
 
