@@ -186,6 +186,12 @@ func (s *Service) GetBalance(userID int64) (*model.Balance, *model.APIError) {
 func (s *Service) SetWithdraw(userID int64, input model.SetWithdrawDTO) *model.APIError {
 	err := s.storage.SetWithdraw(userID, input)
 	if err != nil {
+		if errors.Is(err, model.ErrInsufficientFunds) {
+			return &model.APIError{
+				Code:    http.StatusPaymentRequired,
+				Message: model.ErrInsufficientFundsMessage,
+			}
+		}
 		return &model.APIError{
 			Code:    http.StatusInternalServerError,
 			Message: model.ErrInternalServerMessage,

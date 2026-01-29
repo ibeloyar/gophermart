@@ -4,19 +4,34 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/ibeloyar/gophermart/pgk/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 type errorReader struct{}
 
 func (errorReader) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("read error")
+}
+
+func createTestLogger(t *testing.T) (*zap.SugaredLogger, error) {
+	t.Helper()
+
+	lg, err := logger.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer lg.Sync()
+
+	return lg, err
 }
 
 func TestReadBody_TextPlain_String_Success(t *testing.T) {
@@ -114,10 +129,13 @@ func TestReadBody_TextPlainWithCharset(t *testing.T) {
 }
 
 func TestWriteJSON_Success(t *testing.T) {
+	lg, err := createTestLogger(t)
+	require.NoError(t, err)
+
 	w := httptest.NewRecorder()
 	data := map[string]string{"key": "value"}
 
-	writeJSON(w, data, http.StatusOK)
+	writeJSON(w, lg, data, http.StatusOK)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
@@ -128,10 +146,13 @@ func TestWriteJSON_Success(t *testing.T) {
 }
 
 func TestWriteJSON_MarshalError(t *testing.T) {
+	lg, err := createTestLogger(t)
+	require.NoError(t, err)
+
 	w := httptest.NewRecorder()
 	data := make(chan int)
 
-	writeJSON(w, data, http.StatusOK)
+	writeJSON(w, lg, data, http.StatusOK)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 

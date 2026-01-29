@@ -9,20 +9,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func resetFlags() {
+func resetFlags(t *testing.T) {
+	t.Helper()
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
 
 func TestRead_Defaults(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	os.Args = []string{"cmd"}
 
-	for _, key := range []string{
-		"RUN_ADDRESS", "DATABASE_URI", "ACCRUAL_SYSTEM_ADDRESS",
-		"PASS_COST", "SECRET_KEY", "TOKEN_LIFETIME",
-	} {
-		os.Unsetenv(key)
-	}
+	t.Setenv("RUN_ADDRESS", "")
+	t.Setenv("DATABASE_URI", "")
+	t.Setenv("ACCRUAL_SYSTEM_ADDRESS", "")
+	t.Setenv("PASS_COST", "")
+	t.Setenv("SECRET_KEY", "")
+	t.Setenv("TOKEN_LIFETIME", "")
 
 	config, err := Read()
 	require.NoError(t, err)
@@ -36,7 +37,7 @@ func TestRead_Defaults(t *testing.T) {
 }
 
 func TestRead_Flags(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	os.Args = []string{"cmd",
 		"-a=:3000",
 		"-d=postgres://user:pass@localhost/db",
@@ -61,23 +62,15 @@ func TestRead_Flags(t *testing.T) {
 }
 
 func TestRead_EnvVars(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	os.Args = []string{"cmd"}
 
-	os.Setenv("RUN_ADDRESS", ":9000")
-	os.Setenv("DATABASE_URI", "env_db_url")
-	os.Setenv("ACCRUAL_SYSTEM_ADDRESS", "http://env:9000")
-	os.Setenv("PASS_COST", "12")
-	os.Setenv("SECRET_KEY", "env_secret")
-	os.Setenv("TOKEN_LIFETIME", "30m")
-	defer func() {
-		os.Unsetenv("RUN_ADDRESS")
-		os.Unsetenv("DATABASE_URI")
-		os.Unsetenv("ACCRUAL_SYSTEM_ADDRESS")
-		os.Unsetenv("PASS_COST")
-		os.Unsetenv("SECRET_KEY")
-		os.Unsetenv("TOKEN_LIFETIME")
-	}()
+	t.Setenv("RUN_ADDRESS", ":9000")
+	t.Setenv("DATABASE_URI", "env_db_url")
+	t.Setenv("ACCRUAL_SYSTEM_ADDRESS", "http://env:9000")
+	t.Setenv("PASS_COST", "12")
+	t.Setenv("SECRET_KEY", "env_secret")
+	t.Setenv("TOKEN_LIFETIME", "30m")
 
 	config, err := Read()
 	require.NoError(t, err)
@@ -91,11 +84,10 @@ func TestRead_EnvVars(t *testing.T) {
 }
 
 func TestRead_FlagsOverrideEnv(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	os.Args = []string{"cmd", "-a=:8080"}
 
-	os.Setenv("RUN_ADDRESS", ":9090")
-	defer os.Unsetenv("RUN_ADDRESS")
+	t.Setenv("RUN_ADDRESS", ":9090")
 
 	config, err := Read()
 	require.NoError(t, err)
@@ -104,11 +96,10 @@ func TestRead_FlagsOverrideEnv(t *testing.T) {
 }
 
 func TestRead_EnvParseError(t *testing.T) {
-	resetFlags()
+	resetFlags(t)
 	os.Args = []string{"cmd"}
 
-	os.Setenv("TOKEN_LIFETIME", "invalid_duration")
-	defer os.Unsetenv("TOKEN_LIFETIME")
+	t.Setenv("TOKEN_LIFETIME", "invalid_duration")
 
 	_, err := Read()
 	require.Error(t, err)

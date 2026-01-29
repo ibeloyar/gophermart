@@ -97,7 +97,7 @@ func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, orders, http.StatusOK)
+	writeJSON(w, c.lg, orders, http.StatusOK)
 }
 
 func (c *Controller) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func (c *Controller) GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, balance, http.StatusOK)
+	writeJSON(w, c.lg, balance, http.StatusOK)
 }
 
 func (c *Controller) SetWithdrawal(w http.ResponseWriter, r *http.Request) {
@@ -135,9 +135,9 @@ func (c *Controller) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(withdrawals) == 0 {
-		writeJSON(w, withdrawals, http.StatusNoContent)
+		writeJSON(w, c.lg, withdrawals, http.StatusNoContent)
 		return
 	}
 
-	writeJSON(w, withdrawals, http.StatusOK)
+	writeJSON(w, c.lg, withdrawals, http.StatusOK)
 }

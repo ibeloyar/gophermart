@@ -1,6 +1,6 @@
 GO = go
 MAKE = make
-DB_HOST=192.168.0.104
+DB_HOST=192.168.0.101
 DB_USER=gophermart
 DB_NAME=gophermart
 DB_PASS=gophermart

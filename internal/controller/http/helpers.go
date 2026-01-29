@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // readBody - читает и парсит JSON и Text/Plain тело запроса в структуру T
@@ -47,12 +49,13 @@ func readBody[T any](r *http.Request) (T, error) {
 }
 
 // writeJSON - записывает ответ в формате JSON и добавляет заголовок Content-Type: application/json
-func writeJSON(w http.ResponseWriter, data interface{}, statusCode int) {
+func writeJSON(w http.ResponseWriter, lg *zap.SugaredLogger, data interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
 	response, err := json.Marshal(data)
 	if err != nil {
+		lg.Errorf("failed to parse request body: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

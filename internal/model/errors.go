@@ -14,12 +14,13 @@ const (
 	ErrOrdersNotFoundMessage         = "no orders found"
 	ErrOrderNumberRequiredMessage    = "invalid order is required"
 	ErrOrderInvalidNumberMessage     = "invalid order number"
+	ErrInsufficientFundsMessage      = "insufficient funds"
 )
 
 var (
+	ErrInsufficientFunds      = errors.New(ErrInsufficientFundsMessage)
 	ErrInvalidLoginOrPassword = errors.New(ErrInvalidLoginOrPasswordMessage)
 
 	ErrOrderHasBeenLoadedCurrentUser = errors.New("order has been loaded current user")
 	ErrOrderHasBeenLoadedSomeUser    = errors.New("order has been loaded some user")
-	ErrInsufficientFunds             = errors.New("insufficient funds")
 )

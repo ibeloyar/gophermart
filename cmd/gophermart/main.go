@@ -5,15 +5,22 @@ import (
 
 	"github.com/ibeloyar/gophermart/internal/app"
 	"github.com/ibeloyar/gophermart/internal/config"
+	"github.com/ibeloyar/gophermart/pgk/logger"
 )
 
 func main() {
-	cfg, err := config.Read()
+	lg, err := logger.New()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer lg.Sync()
 
-	if err := app.Run(cfg); err != nil {
+	cfg, err := config.Read()
+	if err != nil {
+		lg.Fatal(err)
+	}
+
+	if err := app.Run(cfg, lg); err != nil {
 		log.Fatal(err)
 	}
 }

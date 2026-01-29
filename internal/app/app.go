@@ -16,28 +16,23 @@ import (
 	"github.com/ibeloyar/gophermart/internal/repository/pg"
 	"github.com/ibeloyar/gophermart/internal/service"
 	"github.com/ibeloyar/gophermart/pgk/logger"
+	"go.uber.org/zap"
 
 	httpController "github.com/ibeloyar/gophermart/internal/controller/http"
 )
 
-func Run(cfg config.Config) error {
-	lg, err := logger.New()
-	if err != nil {
-		return err
-	}
-	defer lg.Sync()
-
+func Run(cfg config.Config, zapLogger *zap.SugaredLogger) error {
 	storageRepo, err := pg.New(cfg.DatabaseURI, cfg.AccrualSystemAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create a DB connection: %w", err)
 	}
 
 	mainService := service.New(storageRepo, cfg.PassCost, cfg.TokenLifetime, cfg.SecretKey)
 
 	router := chi.NewRouter()
-	router.Use(logger.LoggingMiddleware(lg))
+	router.Use(logger.LoggingMiddleware(zapLogger))
 	router.Use(middleware.Recoverer)
-	handlers := httpController.New(mainService, lg)
+	handlers := httpController.New(mainService, zapLogger)
 
 	srv := &http.Server{
 		Addr:    cfg.RunAddress,
@@ -47,18 +42,18 @@ func Run(cfg config.Config) error {
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	lg.Infof("starting server on %s", cfg.RunAddress)
+	zapLogger.Infof("starting server on %s", cfg.RunAddress)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			lg.Fatalf("server ListenAndServe error: %v", err)
+			zapLogger.Fatalf("server ListenAndServe error: %v", err)
 		}
 	}()
 
 	storageRepo.RunOrdersAccrualUpdater()
 
 	<-signalCtx.Done()
-	lg.Info("shutting down server...")
+	zapLogger.Info("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -71,6 +66,6 @@ func Run(cfg config.Config) error {
 		return fmt.Errorf("shutdown (repo) error: %v", err)
 	}
 
-	lg.Info("server shutdown success")
+	zapLogger.Info("server shutdown success")
 	return nil
 }
