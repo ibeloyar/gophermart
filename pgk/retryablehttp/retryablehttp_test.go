@@ -36,7 +36,12 @@ func TestIsRetryable_ServerErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("Status_%d", code), func(t *testing.T) {
 			resp := httptest.NewRecorder()
 			resp.WriteHeader(code)
-			result := client.isRetryable(resp.Result(), nil)
+
+			r := resp.Result()
+			defer r.Body.Close()
+
+			result := client.isRetryable(r, nil)
+
 			assert.True(t, result)
 		})
 	}
@@ -50,7 +55,11 @@ func TestIsRetryable_SuccessNoRetry(t *testing.T) {
 		t.Run(fmt.Sprintf("Status_%d", code), func(t *testing.T) {
 			resp := httptest.NewRecorder()
 			resp.WriteHeader(code)
-			result := client.isRetryable(resp.Result(), nil)
+
+			r := resp.Result()
+			defer r.Body.Close()
+
+			result := client.isRetryable(r, nil)
 			assert.False(t, result)
 		})
 	}
@@ -84,6 +93,10 @@ func TestDo_SuccessFirstTry(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	require.NoError(t, err)
 	assert.Equal(t, 200, result.StatusCode)
 }
@@ -105,6 +118,10 @@ func TestDo_RetryServerError(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	require.NoError(t, err)
 	assert.Equal(t, 200, result.StatusCode)
 	assert.Equal(t, int32(2), attempts)
@@ -127,6 +144,10 @@ func TestDo_RetryRateLimit(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	require.NoError(t, err)
 	assert.Equal(t, 200, result.StatusCode)
 	assert.Equal(t, int32(2), attempts)
@@ -143,6 +164,10 @@ func TestDo_MaxRetriesExceeded(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "последняя попытка failed")
 	assert.NotNil(t, result)
@@ -161,6 +186,10 @@ func TestDo_ContextCanceled(t *testing.T) {
 	req, _ := http.NewRequest("GET", server.URL, nil)
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Nil(t, result)
 }
@@ -179,6 +208,10 @@ func TestDo_ContextTimeout(t *testing.T) {
 	req, _ := http.NewRequest("GET", server.URL, nil)
 
 	result, err := client.Do(ctx, req)
+	if result != nil {
+		defer result.Body.Close()
+	}
+
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Nil(t, result)
 }
