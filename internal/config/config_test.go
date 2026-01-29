@@ -47,8 +47,8 @@ func TestRead_Flags(t *testing.T) {
 		"-h=1h",
 	}
 
-	os.Unsetenv("RUN_ADDRESS")
-	os.Unsetenv("DATABASE_URI")
+	t.Setenv("RUN_ADDRESS", "")
+	t.Setenv("DATABASE_URI", "")
 
 	config, err := Read()
 	require.NoError(t, err)

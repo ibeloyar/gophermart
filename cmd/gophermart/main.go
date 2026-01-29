@@ -17,10 +17,10 @@ func main() {
 
 	cfg, err := config.Read()
 	if err != nil {
-		lg.Fatal(err)
+		lg.Fatalf("reading config error")
 	}
 
 	if err := app.Run(cfg, lg); err != nil {
-		log.Fatal(err)
+		lg.Fatalf("app run error: %s", err)
 	}
 }
