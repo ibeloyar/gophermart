@@ -84,10 +84,6 @@ func TestPauseResumeRaceCondition(t *testing.T) {
 
 	wg.Wait()
 
-	// проверяем состояние
-	wp.pauseMu.Lock()
-	wp.pauseMu.Unlock()
-
 	// ЗАГЛУШКА может быть true/false - главное без паники
 	assert.True(t, true)
 }
