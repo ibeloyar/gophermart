@@ -32,7 +32,10 @@ type Repository struct {
 	accrualAddress string
 	classifier     *PostgresErrorClassifier
 	retryClient    *retryablehttp.RetryableClient
+	workerPool     *WorkerPool
 
+	shutdownCtx     context.Context
+	shutdownCancel  context.CancelFunc
 	stopAccrualChan chan struct{}
 }
 
@@ -66,12 +69,17 @@ func New(databaseURI, accrualAddress string, lg *zap.SugaredLogger) (*Repository
 		return nil, err
 	}
 
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+
 	repo := &Repository{
 		db:              db,
 		lg:              lg,
 		accrualAddress:  accrualAddress,
 		classifier:      NewPostgresErrorClassifier(),
 		retryClient:     retryablehttp.NewRetryableClient(retryablehttp.RetryConfig{}),
+		workerPool:      NewWorkerPool(),
+		shutdownCtx:     shutdownCtx,
+		shutdownCancel:  shutdownCancel,
 		stopAccrualChan: make(chan struct{}),
 	}
 

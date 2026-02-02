@@ -6,33 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime"
-	"sync"
+	"strconv"
 	"time"
 
 	"github.com/ibeloyar/gophermart/internal/model"
 )
-
-var numWorkers = runtime.NumCPU()
-
-func (r *Repository) processOrderWorker(ctx context.Context, order model.Order) {
-	accrual, err := r.getAccrual(ctx, order.Number)
-	if err != nil {
-		r.lg.Errorf("getting accruals error: %v", err)
-		return
-	}
-
-	if accrual != nil {
-		if err := r.updateOrderStatusAndAccrual(ctx,
-			order.UserID,
-			order.Number,
-			accrual.Status,
-			accrual.Accrual,
-		); err != nil {
-			r.lg.Errorf("updating order status error: %v", err)
-		}
-	}
-}
 
 // RunOrdersAccrualUpdater - запускает обновление
 func (r *Repository) RunOrdersAccrualUpdater() {
@@ -40,35 +18,41 @@ func (r *Repository) RunOrdersAccrualUpdater() {
 
 	go func() {
 		for {
+			r.workerPool.pauseMu.Lock()
+			if r.workerPool.paused {
+				r.workerPool.pauseCond.Wait() // БЛОКИРУЕМОСЬ до resume
+				r.workerPool.pauseMu.Unlock()
+				continue
+			}
+			r.workerPool.pauseMu.Unlock()
+
 			select {
 			case <-ticker.C:
 				orders, err := r.getOrdersWithNewOrProcessingStatus()
 				if err != nil {
-					// "ошибка получения заказов NEW/PROCESSING"
+					r.lg.Errorf("getOrdersWithNewOrProcessingStatus error: %v", err)
 					continue
 				}
 
 				if len(orders) > 0 {
-					tasks := make(chan model.Order, len(orders))
-					var wg sync.WaitGroup
-
-					wg.Add(numWorkers)
-					for i := 0; i < numWorkers; i++ {
+					r.workerPool.wg.Add(r.workerPool.numWorkers)
+					for i := 0; i < r.workerPool.numWorkers; i++ {
 						go func() {
-							defer wg.Done()
-							for order := range tasks {
-								r.processOrderWorker(context.Background(), order)
+							defer r.workerPool.wg.Done()
+							for order := range r.workerPool.jobsQueue {
+								r.worker(r.workerPool.ctx, order)
 							}
 						}()
 					}
 
 					for _, order := range orders {
-						tasks <- order
+						r.workerPool.jobsQueue <- order
 					}
-					close(tasks)
-					wg.Wait()
-				}
 
+					close(r.workerPool.jobsQueue)
+
+					r.workerPool.wg.Wait()
+				}
 			case <-r.stopAccrualChan:
 				ticker.Stop()
 				return
@@ -78,22 +62,46 @@ func (r *Repository) RunOrdersAccrualUpdater() {
 }
 
 func (r *Repository) StopOrdersAccrualUpdater() {
+	timeout := 4 * time.Second
+
 	if r.stopAccrualChan != nil {
 		close(r.stopAccrualChan)
 		r.stopAccrualChan = nil
+	}
+
+	ctx, cancel := context.WithTimeout(r.shutdownCtx, timeout)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		r.workerPool.shutdown()
+	}()
+
+	select {
+	case <-done:
+		r.lg.Info("Graceful shutdown completed")
+	case <-ctx.Done():
+		r.lg.Warn("Force shutdown after timeout")
+		r.shutdownCancel()
 	}
 }
 
 // getAccrual - получить данные по начислению баллов для указанного заказа
 func (r *Repository) getAccrual(ctx context.Context, orderNumber string) (*model.Accrual, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", r.accrualAddress+"/api/orders/"+orderNumber, nil)
-
 	if err != nil {
 		return nil, err
 	}
 
 	response, err := r.retryClient.Do(ctx, req)
 	if err != nil {
+		if response != nil && response.StatusCode == http.StatusTooManyRequests {
+			retryAfter := getRetryAfter(response) // из заголовка
+			r.workerPool.pausePoolWithTimer(retryAfter)
+			response.Body.Close()
+			return nil, fmt.Errorf("rate limited: %v", retryAfter)
+		}
 		return nil, err
 	}
 
@@ -176,4 +184,13 @@ func (r *Repository) updateOrderStatusAndAccrual(ctx context.Context, userID int
 	}
 
 	return tx.Commit()
+}
+
+func getRetryAfter(resp *http.Response) time.Duration {
+	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+		if seconds, err := strconv.ParseInt(retryAfter, 10, 64); err == nil {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return 60 * time.Second // дефолт
 }
