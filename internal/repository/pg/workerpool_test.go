@@ -103,9 +103,6 @@ func TestShutdownEmptyPool(t *testing.T) {
 }
 
 func TestWorkerPoolLifecycle(t *testing.T) {
-	mockRepo := &MockRepositoryForWPTest{}
-	mockRepo.lg = &MockLogger{}
-
 	wp := NewWorkerPool()
 
 	wg := sync.WaitGroup{}
